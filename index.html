@@ -134,7 +134,7 @@
           var marker = new mapboxgl.Marker({
               color: 'purple'
             })
-            .setLngLat([row.Longitude, row.Latitude])
+            .setLngLat([row.lat, row.lon])
             .setPopup(popup)
             .addTo(map); // add the marker to the map
 
