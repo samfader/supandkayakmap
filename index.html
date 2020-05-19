@@ -117,6 +117,17 @@
         d3.csv('https://sup-and-kayak-bucket.s3-us-west-2.amazonaws.com/supkayak.csv', addPoints);
       }
 
+      // to open directions on phone 
+      function mapsSelector(lat, lon) {
+        if /* if we're on iOS, open in Apple Maps */
+          ((navigator.platform.indexOf("iPhone") != -1) || 
+          (navigator.platform.indexOf("iPad") != -1) || 
+          (navigator.platform.indexOf("iPod") != -1))
+          window.open("maps://maps.google.com/maps?daddr=" + lat + "," + lon + "&amp;ll=");
+        else /* else use Google */
+          window.open("https://maps.google.com/maps?daddr=" + lat + "," + lon + "&amp;ll=");
+      }
+
 
       // create a function called addPoints that iterates through your table (row by row) to create markers and popups
       function addPoints(data) {
@@ -129,7 +140,8 @@
           var popup = new mapboxgl.Popup()
             .setHTML(`<h3>` + row.name + `</h3>` + '<h4>' + '<b>' + 'Water type: ' + '</b>' + row.waterway_type + '</h4>' + '<h4>' + '<b>' 
             + 'Been? ' + '</b>' + row.been + '</h4>' + '<h4>' + '<b>' + 'Would go again?' + '</b>' + row.would_go_again + '</h4>' 
-            + '<h4>' + '<b>' + 'Notes: ' + '</b>' + row.notes + '</h4>'); // use the table to populate your popup with text
+            + '<h4>' + '<b>' + 'Notes: ' + '</b>' + row.notes + '</h4>' +
+            `<img style="cursor: pointer;" onclick="mapsSelector(${row.lat},${row.lon})" src="https://s3-us-west-2.amazonaws.com/s.cdpn.io/747/maps-icon.png" />`); // use the table to populate your popup with text
 
 
           // create a variable for your markup and add it to the map 
@@ -139,8 +151,6 @@
             .setLngLat([row.lon, row.lat])
             .setPopup(popup)
             .addTo(map); // add the marker to the map
-
-
         });
       }
 
