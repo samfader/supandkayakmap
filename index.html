@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html>
 
@@ -96,6 +95,9 @@
         };
       };
 
+      var userLat;
+      var userLng;
+      
       //YOUR TURN: add your Mapbox access token 
       mapboxgl.accessToken = 'pk.eyJ1Ijoic2FtZiIsImEiOiJja2FjdWcxeXgxeGpuMnJxdnlkZXgxcGU3In0.E0NwHME71rbY-teDqZ9Zgw';
       var map = new mapboxgl.Map({
@@ -107,15 +109,42 @@
         transformRequest: transformRequest
       });
 
+      var geolocate = new mapboxgl.GeolocateControl({
+        positionOptions: {
+          enableHighAccuracy: true
+        },
+        fitBoundsOptions: {
+          maxZoom:8
+        },
+        trackUserLocation: true,
+        showUserLocation: false
+      });
+
+      map.addControl(geolocate);
 
       map.on("load", function() {
         init();
+
+        geolocate.trigger();
+
+        geolocate.on('geolocate', function()
+        {
+          //Get the updated user location, this returns a javascript object.
+          var userlocation = geolocate._lastKnownPosition;
+
+          //Your work here - Get coordinates like so
+          userLat = userlocation.coords.latitude;
+          userLng = userlocation.coords.longitude;
+
+          console.log("user lat and lon are ", userLat, userLng);
+        });
       });
 
       // Initialize D3 to access your table
       function init() {
         d3.csv('https://sup-and-kayak-bucket.s3-us-west-2.amazonaws.com/supkayak.csv', addPoints);
       }
+
 
       // to open directions on phone 
       function mapsSelector(lat, lon) {
@@ -139,18 +168,26 @@
           // create a variable for your popup and populate your popup with information from your table
           var popup = new mapboxgl.Popup()
             .setHTML(`<h3>` + row.name + `</h3>` + '<h4>' + '<b>' + 'Water type: ' + '</b>' + row.waterway_type + '</h4>' + '<h4>' + '<b>' 
-            + 'Been? ' + '</b>' + row.been + '</h4>' + '<h4>' + '<b>' + 'Would go again?' + '</b>' + row.would_go_again + '</h4>' 
+            + 'Been? ' + '</b>' + row.been + '</h4>' + '<h4>' + '<b>' + 'Would go again? ' + '</b>' + row.would_go_again + '</h4>' 
             + '<h4>' + '<b>' + 'Notes: ' + '</b>' + row.notes + '</h4>' +
-            `<img style="cursor: pointer;" align="center" onclick="mapsSelector(${row.lat},${row.lon})" src="https://i.imgur.com/RN7ThXX.png" />`); // use the table to populate your popup with text
-
+            '<h4>' + '<b>' + 'Directions: ' + '</b>' + `<a id='directions' href='#' onclick="mapsSelector(${row.lat},${row.lon})">click here</a>` + '</h4>' + 
+            '<h4>' + '<b>' + 'Photos: ' + '</b>' + '</h4>');
 
           // create a variable for your markup and add it to the map 
-          var marker = new mapboxgl.Marker({
+          // if visited already, set marker to be purple. otherwise, blue
+          if (row.been == 'yes'){
+            var marker = new mapboxgl.Marker({
               color: 'purple'
             })
             .setLngLat([row.lon, row.lat])
             .setPopup(popup)
             .addTo(map); // add the marker to the map
+          } else {
+              var marker = new mapboxgl.Marker()
+              .setLngLat([row.lon, row.lat])
+              .setPopup(popup)
+              .addTo(map); // add the marker to the map
+            };
         });
       }
 
