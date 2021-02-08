@@ -1,34 +1,29 @@
 <!DOCTYPE html>
 <html>
 
-  <head>
-    <meta charset="utf-8">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge">
-    <title>S&C SUP and Kayak</title>
-    <meta name="description" content="">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <script src="https://api.mapbox.com/mapbox-gl-js/v1.10.0/mapbox-gl.js"></script>
-    <link href="https://api.mapbox.com/mapbox-gl-js/v1.10.0/mapbox-gl.css" rel="stylesheet" />
-    <script src='https://d3js.org/d3.v4.min.js'></script>
-    <link rel="stylesheet" href="style.css">
-
-  </head>
+<head>
+  <meta charset='utf-8' />
+  <title>PNW SUP Map</title>
+  <meta name='viewport' content='initial-scale=1,maximum-scale=1,user-scalable=no' />
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.5.0/jquery.min.js"></script>
+  <script src="https://api.mapbox.com/mapbox-gl-js/v2.1.0/mapbox-gl.js"></script>
+  <link href="https://api.mapbox.com/mapbox-gl-js/v2.1.0/mapbox-gl.css" rel="stylesheet" />
+  <script src='https://npmcdn.com/csv2geojson@latest/csv2geojson.js'></script>
+  <script src='https://npmcdn.com/@turf/turf/turf.min.js'></script>
   <style>
     body {
-      background: #404040;
       margin: 0;
       padding: 0;
     }
 
-
     #map {
-      border-left: 1px solid #fff;
       position: absolute;
-      width: 100%;
       top: 0;
       bottom: 0;
+      width: 100%;
     }
 
+    /* Popup styling */
 
     .mapboxgl-popup {
       padding-bottom: 5px;
@@ -77,29 +72,26 @@
     .mapboxgl-popup-anchor-top>.mapboxgl-popup-tip {
       border-bottom-color: rgb(61, 59, 59);
     }
-
   </style>
+</head>
 
-  <body>
+<body>
 
-    <div id="map"></div>
-    <script>
-      var transformRequest = (url, resourceType) => {
-        var isMapboxRequest =
-          url.slice(8, 22) === "api.mapbox.com" ||
-          url.slice(10, 26) === "tiles.mapbox.com";
-        return {
-          url: isMapboxRequest
-            ? url.replace("?", "?pluginName=sheetMapper&")
-            : url
-        };
+  <div id='map'></div>
+  <script>
+
+    var transformRequest = (url, resourceType) => {
+      var isMapboxRequest =
+        url.slice(8, 22) === "api.mapbox.com" ||
+        url.slice(10, 26) === "tiles.mapbox.com";
+      return {
+        url: isMapboxRequest
+          ? url.replace("?", "?pluginName=sheetMapper&")
+          : url
       };
-
-      var userLat;
-      var userLng;
-      
-      //YOUR TURN: add your Mapbox access token 
-      mapboxgl.accessToken = 'pk.eyJ1Ijoic2FtZiIsImEiOiJja2FjdWcxeXgxeGpuMnJxdnlkZXgxcGU3In0.E0NwHME71rbY-teDqZ9Zgw';
+    };
+    //YOUR TURN: add your Mapbox token 
+    mapboxgl.accessToken = 'pk.eyJ1Ijoic2FtZiIsImEiOiJja2FjdWcxeXgxeGpuMnJxdnlkZXgxcGU3In0.E0NwHME71rbY-teDqZ9Zgw';
       var map = new mapboxgl.Map({
         container: 'map', // container id
         style: "mapbox://styles/samf/ckacue60r5jot1it994actmm7", //YOUR TURN: choose a style: https://docs.mapbox.com/api/maps/#styles
@@ -109,89 +101,125 @@
         transformRequest: transformRequest
       });
 
-      var geolocate = new mapboxgl.GeolocateControl({
-        positionOptions: {
-          enableHighAccuracy: true
-        },
-        fitBoundsOptions: {
-          maxZoom:8
-        },
-        trackUserLocation: true,
-        showUserLocation: false
+    $(document).ready(function () {
+      $.ajax({
+        type: "GET",
+        //YOUR TURN: Replace with csv export link
+        url: 'https://docs.google.com/spreadsheets/d/1sNuo8GRg0rGJDon5naoSwEXmaRIBd_NlgcglNnYCrAg/gviz/tq?tqx=out:csv&sheet=Sheet1',
+        dataType: "text",
+        success: function (csvData) { makeGeoJSON(csvData); }
       });
 
-      map.addControl(geolocate);
 
-      map.on("load", function() {
-        init();
 
-        geolocate.trigger();
+      function makeGeoJSON(csvData) {
+        csv2geojson.csv2geojson(csvData, {
+          latfield: 'lat',
+          lonfield: 'lon',
+          delimiter: ','
+        }, function (err, data) {
+          map.on('load', function () {
 
-        geolocate.on('geolocate', function()
-        {
-          //Get the updated user location, this returns a javascript object.
-          var userlocation = geolocate._lastKnownPosition;
+            //Add the the layer to the map 
+            map.addLayer({
+              'id': 'csvData',
+              'type': 'circle',
+              'source': {
+                'type': 'geojson',
+                'data': data
+              },
+              "paint": {
+                "circle-color": [
+                    "match",
+                    ["get", "been"],
+                    ["yes"],
+                    "hsl(289, 88%, 45%)",
+                    "hsl(0, 79%, 67%)"
+                ],
+                "circle-blur": 0.3,
+                "circle-stroke-width": 0.5,
+                "circle-stroke-color": "hsl(292, 25%, 27%)"
+            }
+            });
 
-          //Your work here - Get coordinates like so
-          userLat = userlocation.coords.latitude;
-          userLng = userlocation.coords.longitude;
 
-          console.log("user lat and lon are ", userLat, userLng);
+            // data.forEach(function(row) {
+
+            //   // create a variable for your popup and populate your popup with information from your table
+
+
+            //   // create a variable for your markup and add it to the map 
+            //   // if visited already, set marker to be purple. otherwise, blue
+            //   if (row.been == 'yes'){
+            //     var marker = new mapboxgl.Marker({
+            //       color: 'purple'
+            //     })
+            //     .setLngLat([row.lon, row.lat])
+            //     .setPopup(popup)
+            //     .addTo(map); // add the marker to the map
+            //   } else {
+            //       var marker = new mapboxgl.Marker()
+            //       .setLngLat([row.lon, row.lat])
+            //       .setPopup(popup)
+            //       .addTo(map); // add the marker to the map
+            //     };
+            // });
+
+            // When a click event occurs on a feature in the csvData layer, open a popup at the
+            // location of the feature, with description HTML from its properties.
+            map.on('click', 'csvData', function (e) {
+              var coordinates = e.features[0].geometry.coordinates.slice();
+
+              console.log(e.features[0]);
+
+              //set popup text 
+              //You can adjust the values of the popup to match the headers of your CSV. 
+              // For example: e.features[0].properties.Name is retrieving information from the field Name in the original CSV. 
+              var description = `<h3>` + e.features[0].properties.name + `</h3>` + '<h4>' + '<b>' + 'Water type: ' + '</b>' + e.features[0].properties.waterway_type + '</h4>' + '<h4>' + '<b>' 
+                + 'Been? ' + '</b>' + e.features[0].properties.been + '</h4>' + '<h4>' + '<b>' + 'Would go again? ' + '</b>' + e.features[0].properties.would_go_again + '</h4>' 
+                + '<h4>' + '<b>' + 'Notes: ' + '</b>' + e.features[0].properties.notes + '</h4>' +
+                '<h4>' + '<b>' + 'Directions: ' + '</b>' + `<a id='directions' href='#' onclick="mapsSelector(${e.features[0].lat},${e.features[0].lon})">click here</a>` + '</h4>' + 
+                '<h4>' + '<b>' + 'Photos: ' + '</b>' + '</h4>';
+
+              // Ensure that if the map is zoomed out such that multiple
+              // copies of the feature are visible, the popup appears
+              // over the copy being pointed to.
+              while (Math.abs(e.lngLat.lng - coordinates[0]) > 180) {
+                coordinates[0] += e.lngLat.lng > coordinates[0] ? 360 : -360;
+              }
+
+              //add Popup to map
+
+              new mapboxgl.Popup()
+                .setLngLat(coordinates)
+                .setHTML(description)
+                .addTo(map);
+            });
+
+            // Change the cursor to a pointer when the mouse is over the places layer.
+            map.on('mouseenter', 'csvData', function () {
+              map.getCanvas().style.cursor = 'pointer';
+            });
+
+            // Change it back to a pointer when it leaves.
+            map.on('mouseleave', 'places', function () {
+              map.getCanvas().style.cursor = '';
+            });
+
+            var bbox = turf.bbox(data);
+            map.fitBounds(bbox, { padding: 50 });
+
+          });
+
         });
-      });
-
-      // Initialize D3 to access your table
-      function init() {
-        d3.csv('https://sup-and-kayak-bucket.s3-us-west-2.amazonaws.com/supkayak.csv', addPoints);
-      }
+      };
+    });
 
 
-      // to open directions on phone 
-      function mapsSelector(lat, lon) {
-        if /* if we're on iOS, open in Apple Maps */
-          ((navigator.platform.indexOf("iPhone") != -1) || 
-          (navigator.platform.indexOf("iPad") != -1) || 
-          (navigator.platform.indexOf("iPod") != -1))
-          window.open("maps://maps.google.com/maps?daddr=" + lat + "," + lon + "&amp;ll=");
-        else /* else use Google */
-          window.open("https://maps.google.com/maps?daddr=" + lat + "," + lon + "&amp;ll=");
-      }
 
 
-      // create a function called addPoints that iterates through your table (row by row) to create markers and popups
-      function addPoints(data) {
+  </script>
 
-        // iterate through your table to set the marker to lat/long values for each row
-
-        data.forEach(function(row) {
-
-          // create a variable for your popup and populate your popup with information from your table
-          var popup = new mapboxgl.Popup()
-            .setHTML(`<h3>` + row.name + `</h3>` + '<h4>' + '<b>' + 'Water type: ' + '</b>' + row.waterway_type + '</h4>' + '<h4>' + '<b>' 
-            + 'Been? ' + '</b>' + row.been + '</h4>' + '<h4>' + '<b>' + 'Would go again? ' + '</b>' + row.would_go_again + '</h4>' 
-            + '<h4>' + '<b>' + 'Notes: ' + '</b>' + row.notes + '</h4>' +
-            '<h4>' + '<b>' + 'Directions: ' + '</b>' + `<a id='directions' href='#' onclick="mapsSelector(${row.lat},${row.lon})">click here</a>` + '</h4>' + 
-            '<h4>' + '<b>' + 'Photos: ' + '</b>' + '</h4>');
-
-          // create a variable for your markup and add it to the map 
-          // if visited already, set marker to be purple. otherwise, blue
-          if (row.been == 'yes'){
-            var marker = new mapboxgl.Marker({
-              color: 'purple'
-            })
-            .setLngLat([row.lon, row.lat])
-            .setPopup(popup)
-            .addTo(map); // add the marker to the map
-          } else {
-              var marker = new mapboxgl.Marker()
-              .setLngLat([row.lon, row.lat])
-              .setPopup(popup)
-              .addTo(map); // add the marker to the map
-            };
-        });
-      }
-
-    </script>
-  </body>
+</body>
 
 </html>
