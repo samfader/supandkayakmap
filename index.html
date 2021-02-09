@@ -72,34 +72,110 @@
     .mapboxgl-popup-anchor-top>.mapboxgl-popup-tip {
       border-bottom-color: rgb(61, 59, 59);
     }
+
+    li {
+      padding: 3px 0;
+    }
+
+    #legend {
+      font-family: 'Alegreya';
+      background: white;
+      width: 150px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      position: absolute;
+      left: 45px;
+      top: 1%;
+      box-shadow: 0 0 4px 0 rgba(0, 0, 0, 0.1);
+      opacity: 100%;
+    }
+
+    #threed {
+      font-family: 'Alegreya';
+      background: white;
+      width: 80px;
+      border: 1px solid rgba(0, 0, 0, 0.05);
+      position: absolute;
+      left: 45px;
+      top: 15%;
+      box-shadow: 0 0 4px 0 rgba(0, 0, 0, 0.1);
+      opacity: 100%;
+    }
+
+    h4 {
+      border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+      margin: 0;
+      font-size: 15px;
+    }
+
+    ul {
+      list-style-type: none;
+      margin: 0;
+      padding: 16px;
+    }
+
+    ul span {
+      width: 10px;
+      height: 10px;
+      display: inline-block;
+      margin-right: 8px;
+      border-radius: 50%;
+    }
   </style>
 </head>
 
 <body>
+  <script src="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.min.js">
+  </script>
+  <link rel="stylesheet"
+    href="https://api.mapbox.com/mapbox-gl-js/plugins/mapbox-gl-geocoder/v4.5.1/mapbox-gl-geocoder.css"
+    type="text/css" />
 
   <div id='map'></div>
+  <div id='legend'>
+    <ul>
+      <h4>Been?</h4>
+      <li><span style='background: hsl(289, 88%, 45%)'></span><button>yes</button></li>
+      <li><span style='background: hsl(0, 79%, 67%)'></span><button>no</button></li>
+      <li><button>Clear filter(s)</button></li>
+    </ul>
+  </div>
+  <div id='threed'>
+    <ul>
+      <h4>3D</h4>
+      <li><button>On</button></li>
+      <li><button>Off</button></li>
+    </ul>
+  </div>
   <script>
-
     var transformRequest = (url, resourceType) => {
       var isMapboxRequest =
         url.slice(8, 22) === "api.mapbox.com" ||
         url.slice(10, 26) === "tiles.mapbox.com";
       return {
-        url: isMapboxRequest
-          ? url.replace("?", "?pluginName=sheetMapper&")
-          : url
+        url: isMapboxRequest ?
+          url.replace("?", "?pluginName=sheetMapper&") : url
       };
     };
     //YOUR TURN: add your Mapbox token 
     mapboxgl.accessToken = 'pk.eyJ1Ijoic2FtZiIsImEiOiJja2FjdWcxeXgxeGpuMnJxdnlkZXgxcGU3In0.E0NwHME71rbY-teDqZ9Zgw';
-      var map = new mapboxgl.Map({
-        container: 'map', // container id
-        style: "mapbox://styles/samf/ckacue60r5jot1it994actmm7", //YOUR TURN: choose a style: https://docs.mapbox.com/api/maps/#styles
-        center: [-121.989, 45.507], // starting position [lng, lat]
-        zoom: 8, // starting zoom
-        hash: true,
-        transformRequest: transformRequest
-      });
+    var map = new mapboxgl.Map({
+      container: 'map', // container id
+      style: "mapbox://styles/samf/ckacue60r5jot1it994actmm7", //YOUR TURN: choose a style: https://docs.mapbox.com/api/maps/#styles
+      center: [-121.989, 45.507], // starting position [lng, lat]
+      zoom: 8, // starting zoom
+      hash: true,
+      transformRequest: transformRequest
+    });
+
+    map.addControl(
+      new MapboxGeocoder({
+        accessToken: mapboxgl.accessToken,
+        mapboxgl: mapboxgl
+      })
+    );
+
+    var nav = new mapboxgl.NavigationControl();
+    map.addControl(nav, "top-left");
 
     $(document).ready(function () {
       $.ajax({
@@ -107,10 +183,10 @@
         //YOUR TURN: Replace with csv export link
         url: 'https://docs.google.com/spreadsheets/d/1sNuo8GRg0rGJDon5naoSwEXmaRIBd_NlgcglNnYCrAg/gviz/tq?tqx=out:csv&sheet=Sheet1',
         dataType: "text",
-        success: function (csvData) { makeGeoJSON(csvData); }
+        success: function (csvData) {
+          makeGeoJSON(csvData);
+        }
       });
-
-
 
       function makeGeoJSON(csvData) {
         csv2geojson.csv2geojson(csvData, {
@@ -119,6 +195,26 @@
           delimiter: ','
         }, function (err, data) {
           map.on('load', function () {
+
+            var legendEl = document.getElementById("legend");
+            legendEl.addEventListener("click", function (e) {
+              var value = e.target.innerHTML;
+              filterMarkers(value);
+            });
+
+            var legendEl = document.getElementById("threed");
+            legendEl.addEventListener("click", function (e) {
+              var value = e.target.innerHTML;
+              threeD(value);
+            });
+
+            // getting 3d set up
+            map.addSource('mapbox-dem', {
+              'type': 'raster-dem',
+              'url': 'mapbox://mapbox.mapbox-terrain-dem-v1',
+              'tileSize': 512,
+              'maxzoom': 14
+            });
 
             //Add the the layer to the map 
             map.addLayer({
@@ -130,40 +226,17 @@
               },
               "paint": {
                 "circle-color": [
-                    "match",
-                    ["get", "been"],
-                    ["yes"],
-                    "hsl(289, 88%, 45%)",
-                    "hsl(0, 79%, 67%)"
+                  "match",
+                  ["get", "been"],
+                  ["yes"],
+                  "hsl(289, 88%, 45%)",
+                  "hsl(0, 79%, 67%)"
                 ],
                 "circle-blur": 0.3,
                 "circle-stroke-width": 0.5,
                 "circle-stroke-color": "hsl(292, 25%, 27%)"
-            }
+              }
             });
-
-
-            // data.forEach(function(row) {
-
-            //   // create a variable for your popup and populate your popup with information from your table
-
-
-            //   // create a variable for your markup and add it to the map 
-            //   // if visited already, set marker to be purple. otherwise, blue
-            //   if (row.been == 'yes'){
-            //     var marker = new mapboxgl.Marker({
-            //       color: 'purple'
-            //     })
-            //     .setLngLat([row.lon, row.lat])
-            //     .setPopup(popup)
-            //     .addTo(map); // add the marker to the map
-            //   } else {
-            //       var marker = new mapboxgl.Marker()
-            //       .setLngLat([row.lon, row.lat])
-            //       .setPopup(popup)
-            //       .addTo(map); // add the marker to the map
-            //     };
-            // });
 
             // When a click event occurs on a feature in the csvData layer, open a popup at the
             // location of the feature, with description HTML from its properties.
@@ -175,10 +248,15 @@
               //set popup text 
               //You can adjust the values of the popup to match the headers of your CSV. 
               // For example: e.features[0].properties.Name is retrieving information from the field Name in the original CSV. 
-              var description = `<h3>` + e.features[0].properties.name + `</h3>` + '<h4>' + '<b>' + 'Water type: ' + '</b>' + e.features[0].properties.waterway_type + '</h4>' + '<h4>' + '<b>' 
-                + 'Been? ' + '</b>' + e.features[0].properties.been + '</h4>' + '<h4>' + '<b>' + 'Would go again? ' + '</b>' + e.features[0].properties.would_go_again + '</h4>' 
-                + '<h4>' + '<b>' + 'Notes: ' + '</b>' + e.features[0].properties.notes + '</h4>' +
-                '<h4>' + '<b>' + 'Directions: ' + '</b>' + `<a id='directions' href='#' onclick="mapsSelector(${e.features[0].lat},${e.features[0].lon})">click here</a>` + '</h4>' + 
+              var description = `<h3>` + e.features[0].properties.name + `</h3>` + '<h4>' + '<b>' +
+                'Water type: ' + '</b>' + e.features[0].properties.waterway_type + '</h4>' + '<h4>' +
+                '<b>' +
+                'Been? ' + '</b>' + e.features[0].properties.been + '</h4>' + '<h4>' + '<b>' +
+                'Would go again? ' + '</b>' + e.features[0].properties.would_go_again + '</h4>' +
+                '<h4>' + '<b>' + 'Notes: ' + '</b>' + e.features[0].properties.notes + '</h4>' +
+                '<h4>' + '<b>' + 'Directions: ' + '</b>' +
+                `<a id='directions' href='#' onclick="mapsSelector(${e.features[0].lat},${e.features[0].lon})">click here</a>` +
+                '</h4>' +
                 '<h4>' + '<b>' + 'Photos: ' + '</b>' + '</h4>';
 
               // Ensure that if the map is zoomed out such that multiple
@@ -206,18 +284,59 @@
               map.getCanvas().style.cursor = '';
             });
 
+            function filterMarkers(status) {
+              // if clear is cliked, clear, otherwise filter
+              if (status == "Clear filter(s)") {
+                // map.setLayoutProperty('csvData', 'visibility', 'visible');
+                map.setFilter("csvData", null);
+                threeD("Off");
+              } else {
+                // map.setLayoutProperty('csvData', 'visibility', 'none');
+                map.setFilter("csvData", ["==", ["get", "been"], status]);
+              }
+            }
+
+            // 3d toggle
+            function threeD(status) {
+              if (status == "On") {
+                console.log("on");
+                //turn 3d on
+                map.setTerrain({
+                  'source': 'mapbox-dem',
+                  'exaggeration': 1.5
+                });
+
+                map.setPitch(80);
+                map.setZoom(10.5);
+
+                // add a sky layer that will show when the map is highly pitched
+                map.addLayer({
+                  'id': 'sky',
+                  'type': 'sky',
+                  'paint': {
+                    'sky-type': 'atmosphere',
+                    'sky-atmosphere-sun': [0.0, 0.0],
+                    'sky-atmosphere-sun-intensity': 15
+                  }
+                });
+              } else {
+                console.log("off");
+                //turn 3d off
+                map.setTerrain(null);
+                map.removeLayer('sky');
+              }
+            }
+
             var bbox = turf.bbox(data);
-            map.fitBounds(bbox, { padding: 50 });
+            map.fitBounds(bbox, {
+              padding: 50
+            });
 
           });
 
         });
       };
     });
-
-
-
-
   </script>
 
 </body>
