@@ -174,8 +174,14 @@
       })
     );
 
-    var nav = new mapboxgl.NavigationControl();
+    var nav = new mapboxgl.NavigationControl({visualizePitch: true});
     map.addControl(nav, "top-left");
+
+    var scale = new mapboxgl.ScaleControl({
+      maxWidth: 80,
+      unit: 'imperial'
+    });
+    map.addControl(scale);
 
     $(document).ready(function () {
       $.ajax({
